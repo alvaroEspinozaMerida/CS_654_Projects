@@ -51,38 +51,27 @@ def policy_evaluation(P, nS, nA, policy, gamma=0.9, tol=1e-8):
     value_function = np.zeros(nS)
     while True:
         delta = 0
-        for state in P: # looping through the states
-            v = value_function[state]
+        for s in range(nS): # looping through states
+            v = value_function[s]
             sum1 = 0
-            for action in P[state]: # looping through the actions ; first summation in equation
-                action_probability = P[state][action][0]
+            for a in range(nA):
+                action_probability = policy[s, a]
                 sum2 = 0
-                for next_state in P[state][action]: # next state is the (probability, nextstate, reward, terminal)
-                    prob = next_state[0]
-                    next_state = next_state[1]
-                    reward = next_state[2]
-
-                    sum2 += prob * (reward + gamma * value_function[next_state] )
+                for state_action in P[s][a]:
+                    prob = state_action[0]
+                    next_state = state_action[1]
+                    reward = state_action[2]
+                    terminal = state_action[3]
+                    if not terminal:
+                        sum2 += prob * (reward + gamma * value_function[next_state])
+                    else:
+                        sum2 += prob * reward
                 sum1 += action_probability * sum2
-
-            value_function[state] = sum1
-            tol = abs(v[state] - value_function[state])
-            delta = max(delta, tol)
+            value_function[s] = sum1
+            dif = abs(v - value_function[s])
+            delta = max(delta, dif)
         if delta < tol:
             break
-
-
-
-
-
-
-
-
-
-
-
-
-
     return value_function 
 
 
