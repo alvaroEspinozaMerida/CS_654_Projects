@@ -54,10 +54,10 @@ def policy_evaluation(P, nS, nA, policy, gamma=0.9, tol=1e-8):
         for s in range(nS): # looping through states
             v = value_function[s]
             sum1 = 0
-            for a in range(nA):
-                action_probability = policy[s, a]
+            for a in range(nA): # looping through the actions for each state
+                action_probability = policy[s, a] # value action
                 sum2 = 0
-                for state_action in P[s][a]:
+                for state_action in P[s][a]: # represents the outer summation that mulitples inner summation by the probability of taking action given state
                     prob = state_action[0]
                     next_state = state_action[1]
                     reward = state_action[2]
@@ -93,10 +93,30 @@ def policy_improvement(P, nS, nA, value_from_policy, gamma=0.9):
     """
 
     new_policy = np.ones([nS, nA]) / nA # policy as a uniform distribution
-	############################
-	# YOUR IMPLEMENTATION HERE #
-    #                          #
-	############################
+
+    for s in range(nS):
+        max_action = None
+        state_action_values = [] # represents a list of values for the current state that holds said states' state action values
+        for a in range(nA):
+
+            sum2 = 0
+            for state_action in P[s][a]:
+                prob = state_action[0]
+                next_state = state_action[1]
+                reward = state_action[2]
+                terminal = state_action[3]
+                if not terminal:
+                    sum2 += prob * (reward + gamma * value_from_policy[next_state])
+                else:
+                    sum2 += prob * reward
+
+            state_action_values.append(sum2)
+
+        max_action = state_action_values.index(max(state_action_values))
+        new_action = np.zeros(nA)
+        new_action[max_action] = 1
+        new_policy[s] = new_action
+
     return new_policy
 
 
@@ -118,12 +138,25 @@ def policy_iteration(P, nS, nA, policy, gamma=0.9, tol=1e-8):
     new_policy: np.ndarray[nS,nA]
     V: np.ndarray[nS]
     """
-    new_policy = policy.copy()
-	############################
-	# YOUR IMPLEMENTATION HERE #
-    #                          #
-	############################
-    return new_policy, V
+    policy_stable = False
+
+    old_policy = policy.copy()
+    new_policy = None
+
+    value_function = policy_evaluation(P, nS, nA, old_policy, gamma, tol = tol) # initialize value function to from current policy
+
+    while not policy_stable:
+
+        new_policy = policy_improvement(P, nS, nA, value_function, gamma)
+        if np.array_equal(old_policy, new_policy):
+            policy_stable = True
+        else:
+            value_function = policy_evaluation(P, nS, nA, new_policy,gamma, tol = tol)
+        old_policy = new_policy.copy()
+
+
+    return new_policy, value_function
+
 
 def value_iteration(P, nS, nA, V, gamma=0.9, tol=1e-8):
     """
