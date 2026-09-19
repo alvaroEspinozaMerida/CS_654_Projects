@@ -1,6 +1,7 @@
 ### MDP Value Iteration and Policy Iteration
 ### Reference: https://web.stanford.edu/class/cs234/assignment1/index.html 
 import numpy as np
+import gymnasium as gym
 
 np.set_printoptions(precision=3)
 
@@ -95,21 +96,15 @@ def policy_improvement(P, nS, nA, value_from_policy, gamma=0.9):
     new_policy = np.ones([nS, nA]) / nA # policy as a uniform distribution
 
     for s in range(nS):
-        max_action = None
         state_action_values = [] # represents a list of values for the current state that holds said states' state action values
         for a in range(nA):
-
             sum2 = 0
             for state_action in P[s][a]:
                 prob = state_action[0]
                 next_state = state_action[1]
                 reward = state_action[2]
                 terminal = state_action[3]
-                if not terminal:
-                    sum2 += prob * (reward + gamma * value_from_policy[next_state])
-                else:
-                    sum2 += prob * reward
-
+                sum2 += prob * (reward + gamma * value_from_policy[next_state])
             state_action_values.append(sum2)
 
         max_action = state_action_values.index(max(state_action_values))
@@ -178,10 +173,32 @@ def value_iteration(P, nS, nA, V, gamma=0.9, tol=1e-8):
     """
     V_new = V.copy()
     policy_new = np.zeros([nS, nA])
-    ############################
-    # YOUR IMPLEMENTATION HERE #
-    #                          #
-    ############################
+
+    while True:
+        delta = 0
+        for s in range(nS):
+            v = V_new[s]
+            action_sums = []
+            for a in range(nA):
+                sum2 = 0
+                for state_action in P[s][a]:
+                    prob = state_action[0]
+                    next_state = state_action[1]
+                    reward = state_action[2]
+                    terminal = state_action[3]
+                    if not terminal:
+                        sum2 += prob * (reward + gamma * V_new[next_state])
+                    else:
+                        sum2 += prob * reward
+                action_sums.append(sum2)
+            max_value = max(action_sums)
+            V_new[s] = max_value
+            delta = max(delta, abs(v - V_new[s]))
+        if delta < tol:
+            break
+
+    policy_new = policy_improvement(P,nS,nA,V_new,gamma)
+
     return policy_new, V_new
 
 def render_single(env, policy, render = False, n_episodes=100):
@@ -202,18 +219,37 @@ def render_single(env, policy, render = False, n_episodes=100):
     ------
     total_rewards: the total number of rewards achieved in the game.
     """
+    nA = env.action_space.n
+
+
     total_rewards = 0
-    for _ in range(n_episodes):
-        ob, _ = env.reset() # initialize the episode
+
+    for episode_num in range(n_episodes):
+        obs, info = env.reset() # initialize the episode
+
+        current_states_prob = policy[obs]
+
         done = False
-        while not done: # using "not truncated" as well, when using time_limited wrapper.
+        episode_reward = 0
+        step_count = 0
+
+        while not done:
             if render:
                 env.render() # render the game
-            ############################
-            # YOUR IMPLEMENTATION HERE #
-            #                          #
-            ############################
-            
+            action = np.random.choice(nA, p=current_states_prob)
+            obs, reward, terminated, truncated, info = env.step(action)
+
+            episode_reward += reward
+            step_count += 1
+            current_states_prob = policy[obs]
+            done = terminated or truncated
+
+
+        print(f"Episode {episode_num+ 1}: {step_count} steps, reward = {episode_reward}")
+
+        total_rewards += episode_reward
+
+    env.close()
     return total_rewards
 
 
